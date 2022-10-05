@@ -22,7 +22,7 @@ fn main() -> io::Result<()>{
     loop {
         // receive message
         let nbytes = nic.recv(&mut buf[..])?;
-        
+        // if s/without_packet_info/new/:
         // // be bytes endianness => address location
         // let _eth_flags = u16::from_be_bytes([buf[0], buf[1]]);
         // // 800: ipv4, 86dd: ipv6
@@ -30,7 +30,8 @@ fn main() -> io::Result<()>{
         // if eth_proto != 0x0800 {
         //     continue;
         // }
-        
+        // and also  include on send
+
         match etherparse::Ipv4HeaderSlice::from_slice(&buf[..nbytes]) {
             Ok(iph) => {
                 let src = iph.source_addr();
