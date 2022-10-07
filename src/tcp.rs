@@ -1,5 +1,6 @@
 // use std::io::prelude::*;
 use std::io;
+use std::collections::VecDeque;
 
 
 
@@ -77,6 +78,10 @@ pub struct Connection {
     recv: RecvSequenceSpace,
     ip: etherparse::Ipv4Header,
     tcp: etherparse::TcpHeader,
+
+    pub(crate) incoming: VecDeque<u8>,
+
+    pub(crate) unacked: VecDeque<u8>,
 }
 
 //   Send Sequence Space
@@ -198,7 +203,9 @@ impl Connection {
                     iph.source()[2],
                     iph.source()[3],
                 ],
-            )
+            ),
+            incoming: Default::default(),
+            unacked: Default::default(),
         };
 
         // need to start establish
