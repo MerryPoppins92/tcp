@@ -93,7 +93,7 @@ fn packet_loop(mut nic: tun_tap::Iface, ih: InterfaceHandle) -> io::Result<()> {
 
                         match cm.connections.entry(q) {
                             Entry::Occupied(mut c) => {
-                                eprintln!("got packet for known quad {:?}", q);
+                                // eprintln!("got packet for known quad {:?}", q);
                                 let a = c.get_mut().on_packet(
                                     &mut nic,
                                     iph,
@@ -111,7 +111,7 @@ fn packet_loop(mut nic: tun_tap::Iface, ih: InterfaceHandle) -> io::Result<()> {
                                 }
                             }
                             Entry::Vacant(e) => {
-                                eprintln!("got packet for unknown quad {:?}", q);
+                                // eprintln!("got packet for unknown quad {:?}", q);
                                 if let Some(pending) = cm.pending.get_mut(&tcph.destination_port())
                                 {
                                     eprintln!("listening, so accepting");
@@ -246,20 +246,22 @@ impl Read for TcpStream {
                     "stream was terminated unexpectedly",
                 )
             })?;
-
+            // eprintln!("trying");
             if c.is_rcv_closed() && c.incoming.is_empty() {
                 // no more data to read, and no need to block, because there won't be any more
+                // eprintln!("connection goes away");
                 return Ok(0);
             }
+            // eprintln!("connection still active");
 
             if !c.incoming.is_empty() {
                 let mut nread = 0;
                 let (head, tail) = c.incoming.as_slices();
                 let hread = std::cmp::min(buf.len(), head.len());
-                buf.copy_from_slice(&head[..hread]);
+                buf[..hread].copy_from_slice(&head[..hread]);
                 nread += hread;
                 let tread = std::cmp::min(buf.len() - nread, tail.len());
-                buf.copy_from_slice(&tail[..tread]);
+                buf[hread..(hread +tread)].copy_from_slice(&tail[..tread]);
                 nread += tread;
                 drop(c.incoming.drain(..nread));
                 return Ok(nread);

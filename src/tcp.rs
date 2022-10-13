@@ -288,9 +288,13 @@ impl Connection {
             self.write(nic, &[])?;
             return Ok(self.availability());
         }
-        self.recv.nxt = seqn.wrapping_add(slen);
+        // self.recv.nxt = seqn.wrapping_add(slen);
 
         if !tcph.ack() {
+            if tcph.syn() {
+                assert!(data.is_empty());
+                self.recv.nxt = seqn.wrapping_add(1);
+            }
             eprintln!("NO ACK");
             return Ok(self.availability());
         }
@@ -314,15 +318,27 @@ impl Connection {
             if is_between_wrapped(self.send.una, ackn, self.send.nxt.wrapping_add(1)) {
                 self.send.una = ackn;
             }
+            // if wrapping_lt(seqn, self.send.una) {
+
+            // }
+
+            // TODO prune self.unacked
+            // TODO if unacked empty and waiting flush, notify
+            // TODO update window
 
             // TODO: accept data
-            assert!(data.is_empty());
+            // assert!(data.is_empty());
 
+            // // TODO only read stuff we haven't read
+            
+            // // TODO: wake up waiting readers
+
+            //  we dont support
             if let State::Estab = self.state {
                 // now let's terminate the connection!
                 // TODO: needs to be stored in the retransmission queue!
                 self.tcp.fin = true;
-                self.write(nic, &[])?;
+                // self.write(nic, &[])?;
                 self.state = State::FinWait1;
             }
         }
@@ -332,6 +348,25 @@ impl Connection {
                 // our FIN has been ACKed!
                 self.state = State::FinWait2;
             }
+        }
+
+        if let State::Estab | State::FinWait1 | State::FinWait2 = self.state {
+            let mut unread_data_at = (self.recv.nxt - seqn) as usize;
+            if unread_data_at > data.len() {
+                assert_eq!(unread_data_at, data.len() + 1);
+                unread_data_at = 0;
+            }
+            println!("reading data from {} at (rnxt {}- seqn {})from{:?}",unread_data_at, self.recv.nxt, seqn, data);
+            self.incoming.extend(&data[unread_data_at..]);
+
+            // self.recv.nxt = seqn.wrapping_add(slen);
+
+            self.recv.nxt = seqn
+                    .wrapping_add(data.len() as u32)
+                    // .wrapping_add(if tcph.syn() { 1 } else { 0 })
+                    .wrapping_add(if tcph.fin() { 1 } else { 0 });
+                    
+            self.write(nic, &[])?;
         }
 
         if tcph.fin() {

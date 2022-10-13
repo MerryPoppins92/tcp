@@ -2,15 +2,27 @@
 use std::{io, thread};
 use std::io::prelude::*;
 fn main() -> io::Result<()>{
+    let x = 1000;
     let mut i = trust::Interface::new()?;
-    let mut l1 = i.bind(1000)?;
+    let mut l1 = i.bind(x)?;
     // let mut l2 = i.bind(9001)?;
 
     let jh1 =thread::spawn(move || {
         while let Ok(mut stream) = l1.accept() {
-            eprintln!("got connection fron 7005");
-            let n = stream.read(&mut [0]).unwrap();
-            eprintln!("read data");
+            eprintln!("got connection from {x}");
+            loop {
+                let mut buf = [0; 512];
+                
+                let n = stream.read(&mut buf[..]).unwrap();
+                eprintln!("read data {n}b of data");
+                if n == 0 {
+                    eprintln!("no more data");
+                    break;
+                } else {
+                    println!("{}", std::str::from_utf8(&buf[..n]).unwrap());
+                }
+            }
+
             // assert!(n, 0);
         }
     });
